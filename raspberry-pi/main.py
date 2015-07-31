@@ -1,6 +1,7 @@
 import picamera
 import time
 import datetime
+import cv
 
 def take_photo():
   '''take photo by pi camera'''
@@ -16,5 +17,16 @@ def take_photo():
     print 'capture to %s' % filename
     camera.capture(filename)
 
+def count_face():
+  '''count face by opencv'''
+  # https://opencv-python-tutroals.readthedocs.org/en/latest/py_tutorials/py_objdetect/py_face_detection/py_face_detection.html
+  face_cascade = cv.CascadeClassifier('haarcascade_frontalface_alt.xml')
+
+  img = cv.imread('20150731-13-51-57.jpg')
+  gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+  faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+  return len(faces)
+
 if __name__ == '__main__':
-  take_photo()
+  print count_face()
