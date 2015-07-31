@@ -1,5 +1,6 @@
 import picamera
 import time
+import datetime
 
 def take_photo():
   '''take photo by pi camera'''
@@ -12,7 +13,7 @@ def take_photo():
     time.sleep(2)
     # use current time as filename to prevent duplicating files
     filename = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S.jpg')
-    println 'capture to %s' % filename
+    print 'capture to %s' % filename
     camera.capture(filename)
 
 if __name__ == '__main__':
