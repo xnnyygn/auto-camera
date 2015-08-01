@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import ConfigParser
+import logging
 
 import picamera
 
@@ -18,8 +19,7 @@ def take_photo(config):
     # Camera warm-up time
     time.sleep(2)
     filepath = determine_photo_path(config)
-    # TODO use log
-    print 'capture to %s' % filepath
+    logging.info('capture to %s', filepath)
     camera.capture(filepath)
     return filepath
 
@@ -33,7 +33,7 @@ def determine_photo_path(config):
 # TODO can be a utility method
 def ensure_directory(path):
   if not os.path.isdir(path):
-    print 'directory [%s] not exist, create it' % path
+    logging.info('directory [%s] not exist, create it', path)
     os.mkdirs(path)
 
 def upload_photo(filename, config):
@@ -41,14 +41,13 @@ def upload_photo(filename, config):
     face_count = face_detect.count_face(filename)
     if config.getboolean('Default', 'DeletePhotoWithoutFace') and face_count == 0:
       # no face in photo, just delete this photo
-      # TODO use log
-      print 'no face, delete photo %s' % filename
+      logging.info('no face, delete photo %s', filename)
       os.remove(filename)
       return
     else:
-      print '%d face detected' % face_count
+      logging.info('%d face detected', face_count)
 
-  print 'start uploading'
+  logging.info('start uploading')
   
 
 def load_config(config_filename):
@@ -59,8 +58,24 @@ def load_config(config_filename):
   fp.close
   return config
 
+def determineLoggingLevel(config):
+  '''determine logging level, default is warning'''
+  level = config.get('Default', 'LoggingLevel')
+  if level == 'DEBUG':
+    return logging.DEBUG
+  elif level == 'INFO':
+    return logging.INFO
+  elif level == 'ERROR':
+    return logging.ERROR
+  else:
+    return logging.WARNING
+
 if __name__ == '__main__':
   # TODO separate config
   config = load_config('settings.ini')
+  logging.basicConfig(
+    level = determineLoggingLevel(config),
+    format='%(asctime)s %(levelname)s %(message)s'
+  )
   filename = take_photo(config)
   upload_photo(filename, config)
