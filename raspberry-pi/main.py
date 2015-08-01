@@ -1,7 +1,11 @@
-import picamera
 import time
 import datetime
-import cv2
+import os
+import sys
+
+import picamera
+
+import face_detect
 
 def take_photo():
   '''take photo by pi camera'''
@@ -14,21 +18,21 @@ def take_photo():
     time.sleep(2)
     # use current time as filename to prevent duplicating files
     filename = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S.jpg')
+    # TODO use log
     print 'capture to %s' % filename
     camera.capture(filename)
     return filename
 
-def count_face(filename):
-  '''count face by opencv'''
-  # https://opencv-python-tutroals.readthedocs.org/en/latest/py_tutorials/py_objdetect/py_face_detection/py_face_detection.html
-  face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_alt.xml')
-
-  img = cv2.imread(filename)
-  gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-  faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-  return len(faces)
+def upload_photo_if_face_detected(filename):
+  face_count = face_detect.count_face(filename)
+  if face_count == 0:
+    # no face in photo, just delete this photo
+    # TODO use log
+    print 'no face, delete photo %s' % filename
+    os.remove(filename)
+  else:
+    print '%d face detected, start uploading' % face_count
 
 if __name__ == '__main__':
   filename = take_photo()
-  print 'face in photo, %d' % count_face(filename)
+  upload_photo_if_face_detected(filename)
