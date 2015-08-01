@@ -2,12 +2,11 @@ import time
 import datetime
 import os
 import sys
-import ConfigParser
 import logging
 
 import picamera
 
-import face_detect
+import agent_util
 
 def take_photo(config):
   '''take photo by pi camera'''
@@ -27,17 +26,13 @@ def determine_photo_path(config):
   # use current time as filename to prevent duplicating files
   filename = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S.jpg')
   capture_dir = config.get('Default', 'CaptureDir')
-  ensure_directory(capture_dir)
+  agent_util.ensure_directory(capture_dir)
   return os.path.join(capture_dir, filename)
-
-# TODO can be a utility method
-def ensure_directory(path):
-  if not os.path.isdir(path):
-    logging.info('directory [%s] not exist, create it', path)
-    os.mkdirs(path)
 
 def upload_photo(filename, config):
   if config.getboolean('Default', 'CountFace'):
+    import face_detect
+
     face_count = face_detect.count_face(filename)
     if config.getboolean('Default', 'DeletePhotoWithoutFace') and face_count == 0:
       # no face in photo, just delete this photo
@@ -48,33 +43,13 @@ def upload_photo(filename, config):
       logging.info('%d face detected', face_count)
 
   logging.info('start uploading')
-  
-
-def load_config(config_filename):
-  # https://wiki.python.org/moin/ConfigParserExamples
-  config = ConfigParser.ConfigParser()
-  fp = open(config_filename)
-  config.readfp(fp)
-  fp.close
-  return config
-
-def determineLoggingLevel(config):
-  '''determine logging level, default is warning'''
-  level = config.get('Default', 'LoggingLevel')
-  if level == 'DEBUG':
-    return logging.DEBUG
-  elif level == 'INFO':
-    return logging.INFO
-  elif level == 'ERROR':
-    return logging.ERROR
-  else:
-    return logging.WARNING
 
 if __name__ == '__main__':
   # TODO separate config
-  config = load_config('settings.ini')
+  config = agent_util.load_config('settings.ini')
+  loggingLevel = config.get('Default', 'LoggingLevel')
   logging.basicConfig(
-    level = determineLoggingLevel(config),
+    level = agent_util.determineLoggingLevel(loggingLevel),
     format='%(asctime)s %(levelname)s %(message)s'
   )
   filename = take_photo(config)
