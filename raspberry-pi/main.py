@@ -2,6 +2,7 @@ import time
 import datetime
 import os
 import sys
+import ConfigParser
 
 import picamera
 
@@ -20,19 +21,35 @@ def take_photo():
     filename = datetime.datetime.now().strftime('%Y%m%d-%H-%M-%S.jpg')
     # TODO use log
     print 'capture to %s' % filename
+    # TODO use capture dir setting
     camera.capture(filename)
     return filename
 
-def upload_photo_if_face_detected(filename):
-  face_count = face_detect.count_face(filename)
-  if face_count == 0:
-    # no face in photo, just delete this photo
-    # TODO use log
-    print 'no face, delete photo %s' % filename
-    os.remove(filename)
-  else:
-    print '%d face detected, start uploading' % face_count
+def upload_photo(filename, config):
+  if config.getboolean('Default', 'DeletePhotoWithoutFace'):
+    face_count = face_detect.count_face(filename)
+    if face_count == 0:
+      # no face in photo, just delete this photo
+      # TODO use log
+      print 'no face, delete photo %s' % filename
+      os.remove(filename)
+      return
+    else:
+      print '%d face detected, keep going' % face_count
+
+  print 'start uploading'
+  
+
+def load_config(config_filename):
+  # https://wiki.python.org/moin/ConfigParserExamples
+  config = ConfigParser.ConfigParser()
+  fp = open(config_filename)
+  config.readfp(fp)
+  fp.close
+  return config
 
 if __name__ == '__main__':
+  # TODO separate config
+  config = load_config('settings.ini')
   filename = take_photo()
-  upload_photo_if_face_detected(filename)
+  upload_photo(filename, config)
