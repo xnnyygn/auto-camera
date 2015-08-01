@@ -3,6 +3,7 @@ from fabric.operations import put, prompt
 
 CODE_DIR = '~/camera-agent'
 PHOTO_DIR = '~/photos'
+CONFIG_PATH = '~/settings.ini'
 
 def deploy():
   # TODO kill camera-agent process
@@ -16,7 +17,7 @@ def deploy():
 
 def capture():
   with cd(CODE_DIR):
-    run('python main.py')
+    run('python main.py -f ' + CONFIG_PATH)
 
 def clear_photo():
   run('rm %s/*' % PHOTO_DIR)

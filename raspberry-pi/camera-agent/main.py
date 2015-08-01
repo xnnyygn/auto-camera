@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import logging
+import argparse
 
 import picamera
 
@@ -44,13 +45,27 @@ def upload_photo(filename, config):
 
   logging.info('start uploading')
 
-if __name__ == '__main__':
-  # TODO separate config
-  config = agent_util.load_config('settings.ini')
+def __parse_args():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-f', '--config')
+  args = parser.parse_args()
+  return vars(args)
+
+def __load_config(args):
+  config_path = args['config'] or 'settings.ini'
+  print 'load config from ' + os.path.realpath(config_path)
+  return agent_util.load_config(config_path)
+
+def __init(config):
   loggingLevel = config.get('Default', 'LoggingLevel')
   logging.basicConfig(
     level = agent_util.determineLoggingLevel(loggingLevel),
     format='%(asctime)s %(levelname)s %(message)s'
   )
+  return config
+
+if __name__ == '__main__':
+  config = __load_config(__parse_args())
+  __init(config)
   filename = take_photo(config)
   upload_photo(filename, config)
