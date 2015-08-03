@@ -1,5 +1,5 @@
 class PhotosController < ApplicationController
-  before_action :set_photo, only: [:show, :show_photo, :edit, :update, :destroy]
+  before_action :set_photo, only: [:show, :show_content, :edit, :update, :destroy]
 
   # GET /photos
   # GET /photos.json
@@ -12,7 +12,21 @@ class PhotosController < ApplicationController
   def show
   end
 
-  def show_photo
+  def show_content
+    if @photo
+      obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
+      if obj.exists?
+      # https://docs.aws.amazon.com/AmazonS3/latest/dev/UploadObjSingleOpRuby.html
+      # https://stackoverflow.com/questions/10811017/how-to-store-data-in-s3-and-allow-user-access-in-a-secure-way-with-rails-api-i
+      # https://stackoverflow.com/questions/12279056/rails-allow-download-of-files-stored-on-s3-without-showing-the-actual-s3-url-to
+      # https://docs.aws.amazon.com/sdkforruby/api/Aws/S3/Object.html#presigned_url-instance_method
+        url = obj.presigned_url(:get, expires_in: 300) # 5 minutes
+        redirect_to url
+        return
+      end
+    end
+    
+    render plain: "404 Not Found", status: 404
   end
 
   # GET /photos/new
@@ -74,6 +88,8 @@ class PhotosController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_photo
       @photo = Photo.find(params[:id])
+    rescue ActiveRecord::RecordNotFound
+      redirect_to photos_url
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.

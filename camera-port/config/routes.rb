@@ -2,6 +2,7 @@ Rails.application.routes.draw do
 
   resources :photos do
     # get 'generate_aws_key', on: :collection
+    get 'show_content', on: :member
   end
 
   resources :cameras

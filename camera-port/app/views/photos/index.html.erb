@@ -17,7 +17,7 @@
   <tbody>
     <% @photos.each do |photo| %>
       <tr>
-        <td><%= photo.aws_key %></td>
+        <td><%= link_to photo.aws_key, show_content_photo_path(photo) %></td>
         <td><%= photo.width %></td>
         <td><%= photo.height %></td>
         <td><%= photo.extension %></td>
