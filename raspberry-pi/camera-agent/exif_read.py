@@ -1,6 +1,6 @@
 import sys
 
-import exifread
+import exifread #https://github.com/ianare/exif-py
 
 def read_exif(filename):
   fp = open(filename, 'rb')
