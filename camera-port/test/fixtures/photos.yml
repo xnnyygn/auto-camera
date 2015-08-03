@@ -1,0 +1,17 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  aws_key: MyString
+  width: 1
+  height: 1
+  date_token: 2015-08-02 07:24:36
+  location: MyString
+  camera: 
+
+two:
+  aws_key: MyString
+  width: 1
+  height: 1
+  date_token: 2015-08-02 07:24:36
+  location: MyString
+  camera: 

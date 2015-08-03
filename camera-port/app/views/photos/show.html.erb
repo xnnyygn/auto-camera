@@ -1,0 +1,34 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <strong>Aws key:</strong>
+  <%= @photo.aws_key %>
+</p>
+
+<p>
+  <strong>Width:</strong>
+  <%= @photo.width %>
+</p>
+
+<p>
+  <strong>Height:</strong>
+  <%= @photo.height %>
+</p>
+
+<p>
+  <strong>Date token:</strong>
+  <%= @photo.date_token %>
+</p>
+
+<p>
+  <strong>Location:</strong>
+  <%= @photo.location %>
+</p>
+
+<p>
+  <strong>Camera:</strong>
+  <%= @photo.camera.name %>
+</p>
+
+<%= link_to 'Edit', edit_photo_path(@photo) %> |
+<%= link_to 'Back', photos_path %>
