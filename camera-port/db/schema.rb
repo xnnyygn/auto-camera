@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20150802081531) do
+ActiveRecord::Schema.define(version: 20150803064911) do
 
   create_table "cameras", force: true do |t|
     t.string   "manufactor"
@@ -33,7 +33,8 @@ ActiveRecord::Schema.define(version: 20150802081531) do
     t.integer  "camera_id"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.string   "extension"
+    t.string   "content_type"
+    t.integer  "file_size"
   end
 
   add_index "photos", ["camera_id"], name: "index_photos_on_camera_id"

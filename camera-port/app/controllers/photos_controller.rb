@@ -12,21 +12,22 @@ class PhotosController < ApplicationController
   def show
   end
 
+  # generate s3 link then redirect to it
   def show_content
-    if @photo
-      obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
-      if obj.exists?
+    # set_photo will raise exception if photo not found by id
+    # so @photo never be null
+    obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
+    if obj.exists?
       # https://docs.aws.amazon.com/AmazonS3/latest/dev/UploadObjSingleOpRuby.html
       # https://stackoverflow.com/questions/10811017/how-to-store-data-in-s3-and-allow-user-access-in-a-secure-way-with-rails-api-i
       # https://stackoverflow.com/questions/12279056/rails-allow-download-of-files-stored-on-s3-without-showing-the-actual-s3-url-to
       # https://docs.aws.amazon.com/sdkforruby/api/Aws/S3/Object.html#presigned_url-instance_method
-        url = obj.presigned_url(:get, expires_in: 300) # 5 minutes
-        redirect_to url
-        return
-      end
+      url = obj.presigned_url(:get, expires_in: 300) # 5 minutes
+      redirect_to url
+    else
+      logger.warn "invalid photo s3 key #{@photo.aws_key}, redirect to list page"
+      redirect_to photos_url
     end
-    
-    render plain: "404 Not Found", status: 404
   end
 
   # GET /photos/new
@@ -42,20 +43,39 @@ class PhotosController < ApplicationController
   # POST /photos.json
   def create
     @photo = Photo.new(photo_params)
-    if !fill_photo_fields(@photo, photo_params)
-      render :new
-      return
-    end
+    photo_file = params[:photo_file]
+    # TODO refactor fill_photo_fields
+    if fill_photo_fields(@photo, photo_params, photo_file)
+      logger.info "receive photo, #{@photo.attributes}"
+      obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
+      # TODO add log
+      logger.info "upload to s3, bucket #{obj.bucket_name}, key #{obj.key}"
+      obj.put(body: photo_file.tempfile)
 
-    # TODO remove response_to
-    respond_to do |format|
-      if @photo.save
-        format.html { redirect_to @photo, notice: 'Photo was successfully created.' }
-        format.json { render :show, status: :created, location: @photo }
-      else
-        format.html { render :new }
-        format.json { render json: @photo.errors, status: :unprocessable_entity }
+      logger.debug "read EXIF from photo"
+      # read exif and fill width and height
+      photo_file.tempfile.rewind
+      # EXIFR will cause closing of the temp file
+      # so read EXIF after uploading photo
+      exif = read_photo_exif(photo_file)
+      logger.debug "got EXIF, #{exif}"
+      @photo.width = exif.width
+      @photo.height = exif.height
+
+      # TODO remove response_to
+      respond_to do |format|
+        logger.debug "save photo"
+        if @photo.save
+          # save photo file to AWS
+          format.html { redirect_to @photo, notice: 'Photo was successfully created.' }
+          format.json { render :show, status: :created, location: @photo }
+        else
+          format.html { render :new }
+          format.json { render json: @photo.errors, status: :unprocessable_entity }
+        end
       end
+    else
+      render :new
     end
   end
 
@@ -89,22 +109,38 @@ class PhotosController < ApplicationController
     def set_photo
       @photo = Photo.find(params[:id])
     rescue ActiveRecord::RecordNotFound
+      logger.debug "no such photo #{params[:id]}, redirect to list page"
       redirect_to photos_url
     end
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def photo_params
-      params.require(:photo).permit(:width, :height, :location, :extension, :camera_id)
+      params.require(:photo).permit(:location, :camera_id)
     end
 
-    def fill_photo_fields(photo, params)
+    def read_photo_exif(photo_file)
+      content_type = photo_file.content_type
+      if content_type == 'image/jpeg'
+        EXIFR::JPEG.new(photo_file.tempfile)
+      elsif content_type == 'image/tiff'
+        EXIFR::TIFF.new(photo_file.tempfile)
+      else
+        raise ArgumentError, "unsupport photo content type #{content_Type}"
+      end
+    end
+
+    def fill_photo_fields(photo, params, photo_file)
       camera_id = params[:camera_id]
       camera = Camera.find(camera_id)
-      extension = params[:extension]
-      # TODO validate extension, whitelist?
-      return false if camera.nil? || extension.blank?
+
+      content_type = photo_file.content_type
+      extension = PHOTO_EXTENSIONS[content_type]
+      # TODO add errors to photo
+      return false if camera.nil? || extension.nil?
 
       photo.camera = camera
+      photo.content_type = content_type
+      photo.file_size = photo_file.size
       photo.date_token = DateTime.now
       photo.aws_key = Photo.generate_aws_key(camera, extension.downcase)
       return true

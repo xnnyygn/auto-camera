@@ -6,7 +6,8 @@
       <th>Aws key</th>
       <th>Width</th>
       <th>Height</th>
-      <th>Extension</th>
+      <th>Content Type</th>
+      <th>File Size</th>
       <th>Date token</th>
       <th>Location</th>
       <th>Camera</th>
@@ -20,7 +21,8 @@
         <td><%= link_to photo.aws_key, show_content_photo_path(photo) %></td>
         <td><%= photo.width %></td>
         <td><%= photo.height %></td>
-        <td><%= photo.extension %></td>
+        <td><%= photo.content_type %></td>
+        <td><%= number_to_human_size(photo.file_size) %></td>
         <td><%= photo.date_token %></td>
         <td><%= photo.location %></td>
         <td><%= photo.camera.name %></td>
