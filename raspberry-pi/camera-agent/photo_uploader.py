@@ -11,6 +11,7 @@ def upload(filename, config):
 
 def __upload(filename, server_uri, location, camera_name):
   f = open(filename, 'rb')
+  # https://requests.readthedocs.org/en/latest/user/quickstart/
   resp = requests.post(
     server_uri,
     files = {'photo_file': f},
