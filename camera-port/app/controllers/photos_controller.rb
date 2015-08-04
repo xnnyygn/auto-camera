@@ -1,5 +1,7 @@
 class PhotosController < ApplicationController
   before_action :set_photo, only: [:show, :show_content, :edit, :update, :destroy]
+  # http://easyramble.com/disable-csrf-measure-on-rails4.html
+  protect_from_forgery except: :create
 
   # GET /photos
   # GET /photos.json
@@ -26,6 +28,7 @@ class PhotosController < ApplicationController
       redirect_to url
     else
       logger.warn "invalid photo s3 key #{@photo.aws_key}, redirect to list page"
+      # TODO add error message to flash and display on the page
       redirect_to photos_url
     end
   end
@@ -45,37 +48,32 @@ class PhotosController < ApplicationController
     @photo = Photo.new(photo_params)
     photo_file = params[:photo_file]
     # TODO refactor fill_photo_fields
-    if fill_photo_fields(@photo, photo_params, photo_file)
-      logger.info "receive photo, #{@photo.attributes}"
-      obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
-      # TODO add log
-      logger.info "upload to s3, bucket #{obj.bucket_name}, key #{obj.key}"
-      obj.put(body: photo_file.tempfile)
+    fill_photo_fields(@photo, photo_file)
+    logger.info "receive photo, #{@photo.attributes}"
+    obj = S3_BUCKET_PHOTO.object(@photo.aws_key)
+    logger.info "upload to s3, bucket #{obj.bucket_name}, key #{obj.key}"
+    obj.put(body: photo_file.tempfile)
 
-      logger.debug "read EXIF from photo"
-      # read exif and fill width and height
-      photo_file.tempfile.rewind
-      # EXIFR will cause closing of the temp file
-      # so read EXIF after uploading photo
-      exif = read_photo_exif(photo_file)
-      logger.debug "got EXIF, #{exif}"
-      @photo.width = exif.width
-      @photo.height = exif.height
+    logger.debug "read EXIF from photo"
+    # read exif and fill width and height
+    photo_file.tempfile.rewind
+    # EXIFR will cause closing of the temp file
+    # so read EXIF after uploading photo
+    exif = read_photo_exif(@photo.content_type, photo_file)
+    @photo.width = exif.width
+    @photo.height = exif.height
 
-      # TODO remove response_to
-      respond_to do |format|
-        logger.debug "save photo"
-        if @photo.save
-          # save photo file to AWS
-          format.html { redirect_to @photo, notice: 'Photo was successfully created.' }
-          format.json { render :show, status: :created, location: @photo }
-        else
-          format.html { render :new }
-          format.json { render json: @photo.errors, status: :unprocessable_entity }
-        end
+    # TODO remove response_to
+    respond_to do |format|
+      logger.debug "save photo"
+      if @photo.save
+        # save photo file to AWS
+        format.html { redirect_to @photo, notice: 'Photo was successfully created.' }
+        format.json { render :show, status: :created, location: @photo }
+      else
+        format.html { render :new }
+        format.json { render json: @photo.errors, status: :unprocessable_entity }
       end
-    else
-      render :new
     end
   end
 
@@ -115,11 +113,10 @@ class PhotosController < ApplicationController
 
     # Never trust parameters from the scary internet, only allow the white list through.
     def photo_params
-      params.require(:photo).permit(:location, :camera_id)
+      params.require(:photo).permit(:location)
     end
 
-    def read_photo_exif(photo_file)
-      content_type = photo_file.content_type
+    def read_photo_exif(content_type, photo_file)
       if content_type == 'image/jpeg'
         EXIFR::JPEG.new(photo_file.tempfile)
       elsif content_type == 'image/tiff'
@@ -129,21 +126,32 @@ class PhotosController < ApplicationController
       end
     end
 
-    def fill_photo_fields(photo, params, photo_file)
-      camera_id = params[:camera_id]
-      camera = Camera.find(camera_id)
+    def fill_photo_fields(photo, photo_file)
+      # refactor me
+      camera = Camera.find_by(name: params.permit(:camera_name)[:camera_name])
+      if camera.nil?
+        # TODO throw more appropriate exception
+        raise ArgumentError, 'invalid camera name'
+      end
 
-      content_type = photo_file.content_type
-      extension = PHOTO_EXTENSIONS[content_type]
-      # TODO add errors to photo
-      return false if camera.nil? || extension.nil?
+      filename = photo_file.original_filename
+      if not filename
+        raise ArgumentError, 'filename required'
+      end
+
+      extension = File.extname(filename).downcase
+      # TODO add extension whitelist
+      if extension.empty?
+        raise ArgumentError, 'unable to determine extension of file'
+      end
+      # get tail of extension, '.jpeg' => 'jpeg'
+      content_type = Mime::Type.lookup_by_extension(extension[1..-1]).to_s
 
       photo.camera = camera
       photo.content_type = content_type
       photo.file_size = photo_file.size
       photo.date_token = DateTime.now
       photo.aws_key = Photo.generate_aws_key(camera, extension.downcase)
-      return true
     end
 
 end
