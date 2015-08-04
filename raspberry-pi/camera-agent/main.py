@@ -57,7 +57,7 @@ def upload_photo(filename, config):
   status_code = resp.status_code
   # TODO more appropriate checking method
   if status_code == 201: # created
-    logging.info('Upload %s successfully, AWS key %s', filename, resp.json().get('aws_key'))
+    logging.info('Upload %s successfully, AWS key %s', filename, resp.json()['aws_key'])
   else:
     logging.warn('Failed to upload %s, status code %d', filename, status_code)
 
